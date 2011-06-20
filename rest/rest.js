@@ -2,7 +2,7 @@ var http = require('https');
 var fs = require('fs');
 
 var access_token;
-var instance_url = 'na8.salesforce.com';
+var instance_url;
 var response;
 var api = '22.0';
 var data;
@@ -16,27 +16,29 @@ function redirectUser() {
 
 
 
-function execute(endpoint,method,reqData,token,_res){
+function execute(endpoint,method,reqData,url,token,_res){
 	response = _res;
 	data = '';
+	var host = (require('url').parse(url))['host'];
 	
 	console.log(':::: EXECUTE REQUEST ::::::');
 	
 	console.log(endpoint);
 	console.log(method);
 	console.log(reqData);
+	console.log(url);
 	console.log(token);
-	
+		
 	if(method == 'GET') {
 		endpoint += "?"+req;
 	}
 	
 	var options = {
-		host: instance_url,
+		host: host,
 		path: '/services/apexrest/'+endpoint,
 		method: method,
 		headers: {
-			'Host': instance_url,
+			'Host': host,
 			'Authorization': 'OAuth '+token,
 		//	'Accept':'application/jsonrequest',
 			'Cache-Control':'no-cache,no-store,must-revalidate'
@@ -69,15 +71,16 @@ function execute(endpoint,method,reqData,token,_res){
 	req.end();			
 	}
 
-function query(soql,token,_res) {
+function query(soql,url,token,_res) {
 	response = _res;
 	data = '';
+	var host = (require('url').parse(url))['host'];
 	var options = {
-		host: instance_url,
+		host: host,
 		path: '/services/data/v'+api+'/query?q='+escape(soql),
 		method: 'GET',
 		headers: {
-			'Host': instance_url,
+			'Host': host,
 			'Authorization': 'OAuth '+token,
 			'Accept':'application/jsonrequest',
 			'Cache-Control':'no-cache,no-store,must-revalidate'
@@ -109,15 +112,17 @@ function query(soql,token,_res) {
 	}
 
 
-function getObjectById(id,type,token,_res) {
+function getObjectById(id,type,url,token,_res) {
 	response = _res;
 	data = '';
+	var host = (require('url').parse(url))['host'];
+
 	var options = {
-		host: instance_url,
+		host: host,
 		path: '/services/data/v'+api+'/sobjects/'+type+'/'+id,
 		method: 'GET',
 		headers: {
-			'Host': instance_url,
+			'Host': host,
 			'Authorization': 'OAuth '+token,
 			'Accept':'application/jsonrequest',
 			'Cache-Control':'no-cache,no-store,must-revalidate',
@@ -149,15 +154,17 @@ function getObjectById(id,type,token,_res) {
 		
 	}
 	
-function update(object,id,type,token,_res) {
+function update(object,id,type,url,token,_res) {
 	response = _res;
 	data = '';
+	var host = (require('url').parse(url))['host'];
+
 	var options = {
-		host: instance_url,
+		host: host,
 		path: '/services/data/v'+api+'/sobjects/'+type+'/'+id,
 		method: 'PATCH',
 		headers: {
-			'Host': instance_url,
+			'Host': host,
 			'Authorization': 'OAuth '+token,
 			'Accept':'application/jsonrequest',
 			'Cache-Control':'no-cache,no-store,must-revalidate',
@@ -189,15 +196,16 @@ function update(object,id,type,token,_res) {
 		
 	}
 
-function create(object,type,token,_res) {
+function create(object,type,url,token,_res) {
 	response = _res;
 	data = '';
+	var host = (require('url').parse(url))['host'];
 	var options = {
-		host: instance_url,
+		host: host,
 		path: '/services/data/v'+api+'/sobjects/'+type,
 		method: 'POST',
 		headers: {
-			'Host': instance_url,
+			'Host': host,
 			'Authorization': 'OAuth '+token,
 			'Accept':'application/jsonrequest',
 			'Cache-Control':'no-cache,no-store,must-revalidate',
@@ -229,15 +237,16 @@ function create(object,type,token,_res) {
 		
 	}
 	
-function deleteObject(id,type,token,_res) {
+function deleteObject(id,type,url,token,_res) {
 	response = _res;
 	data = '';
+	var host = (require('url').parse(url))['host'];
 	var options = {
-		host: 'na8.salesforce.com',
+		host: host,
 		path: '/services/data/v'+api+'/sobjects/'+type+'/'+id,
 		method: 'DELETE',
 		headers: {
-			'Host': instance_url,
+			'Host': host,
 			'Authorization': 'OAuth '+token,
 			'Accept':'application/jsonrequest',
 			'Cache-Control':'no-cache,no-store,must-revalidate',

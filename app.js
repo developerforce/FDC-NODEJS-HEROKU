@@ -9,17 +9,16 @@ var port = process.env.PORT || 3000;
 var oauth = require('./oauth');
 var rest = require('./rest');
 
-//Recommend two Remote Access configurations, one for local and one for Heroku.  This will allow you to swap between the 
-//two without changes.  Just test locally and then git to Heroku when ready to deploy (in theory)
+// Use environment variables to set CLIENT_ID etc. On Heroku, set these like
+// this:
+// heroku config:add CLIENT_ID=somelongstring CLIENT_SECRET=somedigits etc
+// Just test locally and then git to Heroku when ready to deploy (in theory)
 
+oauth.setKeys(process.env.CLIENT_ID,process.env.CLIENT_SECRET);
+oauth.setCallback('https://'+process.env.APP_DOMAIN+'/token','views/'+process.env.START_PAGE+'.html');
 
 if(typeof(process.env.PORT) == 'undefined') {  //you are probably not on Heroku, setup your own SSL
 	// This info is out of date when referring to HTTPS, but the cert gen is the same: http://www.silassewell.com/blog/2010/06/03/node-js-https-ssl-server-example/
-	
-	oauth.setKeys('{LOCALPUBLICKEY}','{LOCALSECRETKEY}');
-	oauth.setCallback('https://{LOCALDOMAIN}/token','views/{LOCALSTART}.html');
-
-	
 	http = require('https');
 	var options = { //sample cert setup
   		key: fs.readFileSync('../privatekey.pem').toString(),
@@ -29,16 +28,9 @@ if(typeof(process.env.PORT) == 'undefined') {  //you are probably not on Heroku,
 	
 	server = http.createServer(options,RESTHandler);
 } else {
-	
-	oauth.setKeys('{REMOTEPUBLICKEY}','{REMOTEPRIVATEKE}');
-	oauth.setCallback('https://{HEROKUDOMAIN}/token','views/{REMOTESTART}.html');
-
-	
 	http = require('http');
 	server = http.createServer(RESTHandler);
 	console.log('HTTP Configured');
-	
-	
 }
 
 
@@ -60,6 +52,7 @@ function RESTHandler (req, res) {
   console.log("Request::::"+req.url);
   console.log("Cookies::::"+cookies.access_token);
   console.log("Cookies::::"+cookies.refresh_token);
+  console.log("Cookies::::"+cookies.instance_url);
   
   
   if(req.url == '/') {
@@ -93,27 +86,27 @@ function RESTHandler (req, res) {
   } else if(req.url.indexOf('/get') >= 0) {
    	
    	console.log("Getting :: "+query.id);
-  	rest.getObjectById(query.id,query.type,oauth.getOAuth().access_token,res);	
+  	rest.getObjectById(query.id,query.type,cookies.instance_url,oauth.getOAuth().access_token,res);	
   		
   } else if(req.url.indexOf('/query') >= 0) {
    	
   	console.log("Query :: "+query.q);
-  	rest.query(query.q,oauth.getOAuth().access_token,res);
+  	rest.query(query.q,cookies.instance_url,oauth.getOAuth().access_token,res);
   
   } else if(req.url.indexOf('/update') >= 0) {
    	
    	console.log("Updating :: "+query.id);
-  	rest.update(query.o,query.id,query.type,oauth.getOAuth().access_token,res);
+  	rest.update(query.o,query.id,query.type,cookies.instance_url,oauth.getOAuth().access_token,res);
   
   } else if(req.url.indexOf('/create') >= 0) {
    	
    	console.log("Creating :: "+query.type);
-  	rest.create(query.o,query.type,oauth.getOAuth().access_token,res);
+  	rest.create(query.o,query.type,cookies.instance_url,oauth.getOAuth().access_token,res);
   
   } else if(req.url.indexOf('/delete') >= 0) {
    	
    	console.log("Deleting :: "+query.id);
-  	rest.deleteObject(query.id,query.type,oauth.getOAuth().access_token,res);
+  	rest.deleteObject(query.id,query.type,cookies.instance_url,oauth.getOAuth().access_token,res);
   
   } else if(req.url.indexOf('/execute/') >= 0) {
    	
@@ -121,7 +114,7 @@ function RESTHandler (req, res) {
    	restData = restData.split('/');
    	console.log("Custom Apex Execute :: "+restData[0]+"."+restData[1]);
    	
-  	rest.execute(restData[0],restData[1],unescape(restData[2]),oauth.getOAuth().access_token,res);
+  	rest.execute(restData[0],restData[1],unescape(restData[2]),cookies.instance_url,oauth.getOAuth().access_token,res);
   
   } else {
   		

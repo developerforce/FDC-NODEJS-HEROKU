@@ -61,9 +61,12 @@ function redirectUser(res) {
 	console.log('RESPONSE:::'+oauthResponse);
 	console.log('RESPONSE:::'+oauthResponse.access_token);
 	console.log('RESPONSE:::'+oauthResponse.refresh_token);
-	
+	console.log('RESPONSE:::'+oauthResponse.instance_url);
+		
 	fs.readFile(callbackFile, function(err, data){
-    	res.setHeader('Set-Cookie', ['refresh_token='+oauthResponse.refresh_token,'access_token='+oauthResponse.access_token]); 
+    	res.setHeader('Set-Cookie', ['refresh_token='+oauthResponse.refresh_token,
+    	    'access_token='+oauthResponse.access_token,
+    	    'instance_url='+oauthResponse.instance_url]); 
     	res.write(data);  
     	res.end();
   		});
