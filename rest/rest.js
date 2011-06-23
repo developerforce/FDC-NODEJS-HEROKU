@@ -4,7 +4,7 @@ var fs = require('fs');
 var access_token;
 var instance_url;
 var response;
-var api = '22.0';
+var api = process.env.API || '22.0';
 var data;
 	
 var callBackFunction;
@@ -30,8 +30,10 @@ function execute(endpoint,method,reqData,url,token,_res){
 	console.log(token);
 		
 	if(method == 'GET') {
-		endpoint += "?"+req;
+		endpoint += reqData;
 	}
+	
+	console.log('APEX ENDPOINT::'+endpoint);
 	
 	var options = {
 		host: host,
@@ -65,8 +67,8 @@ function execute(endpoint,method,reqData,url,token,_res){
 		//  errorCallback(e);
 		})
 	if(method != 'GET') {
-		console.log(reqData);
-		req.write(reqData);
+		console.log('POSTDATA::'+unescape(reqData));
+		req.write(unescape(reqData));
 	}
 	req.end();			
 	}

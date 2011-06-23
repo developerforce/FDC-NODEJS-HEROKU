@@ -121,7 +121,7 @@ function RESTHandler (req, res) {
   		fs.readFile('views'+req.url, function(err, data){
     		if(data) {
     		console.log(data);
-    		res.writeHead(200, {'Content-Type':'text/html'});  
+    		res.writeHead(200);  
     		res.write(data);  
     		res.end();
     		}

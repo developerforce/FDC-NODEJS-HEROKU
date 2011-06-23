@@ -1,0 +1,80 @@
+<HTML>
+<HEAD>
+<script src="http://code.jquery.com/jquery-1.6.1.min.js"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8.13/jquery-ui.min.js" ></script>
+
+<script src="js/spry/SpryData.js" language="javascript" type="text/javascript"></script>
+<script src="js/spry/SpryJSONDataSet.js" language="javascript" type="text/javascript"></script>
+<script src="js/spry/SpryNestedJSONDataSet.js"></script>
+
+<script>
+var caseRecords;
+
+
+function submitCase() {
+ var company = $('#company_name').val();
+ var type = $('#case_type').val();
+ url = '/execute/FieldCase/POST/{"companyName":"'+company+'","caseType":"'+type+'"}/?submit=true';
+ $.ajaxSetup({
+ 
+ 	async: true,
+ 	cache: false,
+ 	dataType: "json",
+ 	success: showResults,
+ 	error: showError,
+ 	url: url
+ 
+ 	});
+
+  $.ajax();
+
+}
+
+function showError(error) {
+	alert(error[0].message);
+}
+	
+function showResults(result) {
+	getCases($('#company_name').val());
+}
+
+
+function getCases(company) {
+ url = '/execute/FieldCase/GET/?companyName='+company;
+ caseRecords = new Spry.Data.JSONDataSet(url);
+ owners = new Spry.Data.NestedJSONDataSet(caseRecords,"Owner");
+}
+
+
+
+</script>
+</HEAD>
+
+<BODY onload="getCases('GenePoint')">
+
+<div>
+<h1>Submit New Case</h1>
+Company Name:<input id="company_name"><BR>
+Case Type:
+<SELECT id="case_type">
+	<OPTION SELECTED>Software</OPTION>
+	<OPTION>Hardware</OPTION>
+	<OPTION>Human Error</OPTION>
+</SELECT>
+<button onclick="submitCase()">Submit</button>
+</div>
+
+
+<div spry:region="caseRecords owners">
+<div spry:repeat="caseRecords">{caseRecords::Subject} ({caseRecords::Status}) [{owners::Name}]</div>
+</div>
+
+
+
+
+</BODY>
+
+
+
+
+</HTML>
