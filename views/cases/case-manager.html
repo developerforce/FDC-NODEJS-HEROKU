@@ -3,9 +3,9 @@
 <script src="http://code.jquery.com/jquery-1.6.1.min.js"></script>
 <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8.13/jquery-ui.min.js" ></script>
 
-<script src="js/spry/SpryData.js" language="javascript" type="text/javascript"></script>
-<script src="js/spry/SpryJSONDataSet.js" language="javascript" type="text/javascript"></script>
-<script src="js/spry/SpryNestedJSONDataSet.js"></script>
+<script src="/js/spry/SpryData.js" language="javascript" type="text/javascript"></script>
+<script src="/js/spry/SpryJSONDataSet.js" language="javascript" type="text/javascript"></script>
+<script src="/js/spry/SpryNestedJSONDataSet.js"></script>
 
 <script>
 var caseRecords;
@@ -45,7 +45,9 @@ function getCases(company) {
  owners = new Spry.Data.NestedJSONDataSet(caseRecords,"Owner");
 }
 
-
+if(window.location.href.indexOf('case-manager') < 0) { //-->
+	window.location.href = 'cases/case-manager.html';
+}
 
 </script>
 </HEAD>
