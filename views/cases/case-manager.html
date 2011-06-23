@@ -8,8 +8,8 @@
 <script src="/js/spry/SpryNestedJSONDataSet.js"></script>
 
 <script>
-var caseRecords;
-
+var caseRecords = new Spry.Data.JSONDataSet(null,null,{useCache:false});
+var owners = new Spry.Data.NestedJSONDataSet(caseRecords,"Owner");
 
 function submitCase() {
  var company = $('#company_name').val();
@@ -20,7 +20,7 @@ function submitCase() {
  	async: true,
  	cache: false,
  	dataType: "json",
- 	success: showResults,
+ 	success: refresh,
  	error: showError,
  	url: url
  
@@ -29,6 +29,49 @@ function submitCase() {
   $.ajax();
 
 }
+
+function deleteOldCases() {
+ var company = $('#company_name').val();
+ var type = $('#case_type').val();
+ url = '/execute/FieldCase/DELETE/?companyName='+company;
+ 
+ $.ajaxSetup({
+ 
+ 	async: true,
+ 	cache: false,
+ 	dataType: "json",
+ 	success: refresh,
+ 	error: showError,
+ 	url: url
+ 
+ 	});
+
+  $.ajax();
+
+}
+
+function closeCase(caseId) {
+ var company = $('#company_name').val();
+ url = '/execute/FieldCase/PATCH/{"caseId":"'+caseId+'","caseStatus":"Closed","caseNote":"Case Closed"}';
+ 
+ $.ajaxSetup({
+ 
+ 	async: true,
+ 	cache: false,
+ 	dataType: "json",
+ 	success: refresh,
+ 	error: showError,
+ 	url: url
+ 
+ 	});
+
+  $.ajax();
+}
+
+function refresh(response) {
+	getCases('GenePoint');
+}
+
 
 function showError(error) {
 	alert(error[0].message);
@@ -40,13 +83,15 @@ function showResults(result) {
 
 
 function getCases(company) {
- url = '/execute/FieldCase/GET/?companyName='+company;
- caseRecords = new Spry.Data.JSONDataSet(url);
- owners = new Spry.Data.NestedJSONDataSet(caseRecords,"Owner");
+ var d = new Date()
+ url = '/execute/FieldCase/GET/?companyName='+company+'&_t='+d.getMilliseconds();
+ caseRecords.setURL(url);
+ caseRecords.loadData();
+ 
 }
 
 if(window.location.href.indexOf('case-manager') < 0) { //-->
-	window.location.href = 'cases/case-manager.html';
+   window.location.href = 'cases/case-manager.html';
 }
 
 
@@ -58,7 +103,7 @@ $(document).ready(getCases('GenePoint'));
 
 <div>
 <h1>Submit New Case</h1>
-Company Name:<input id="company_name"><BR>
+Company Name:<input id="company_name" value="GenePoint"><BR>
 Case Type:
 <SELECT id="case_type">
 	<OPTION SELECTED>Software</OPTION>
@@ -70,7 +115,9 @@ Case Type:
 
 
 <div spry:region="caseRecords owners">
-<div spry:repeat="caseRecords">{caseRecords::Subject} ({caseRecords::Status}) [{owners::Name}]</div>
+<div spry:repeat="caseRecords">{caseRecords::Subject} ({caseRecords::Status}) [{owners::Name}] <BUTTON onClick="closeCase('{caseRecords::Id}')">CLOSE</BUTTON></div>
+
+<BUTTON onclick="deleteOldCases()">Delete Old Cases</BUTTON>
 </div>
 
 

@@ -29,7 +29,7 @@ function execute(endpoint,method,reqData,url,token,_res){
 	console.log(url);
 	console.log(token);
 		
-	if(method == 'GET') {
+	if(method == 'GET' || method == 'DELETE') {
 		endpoint += reqData;
 	}
 	
@@ -53,12 +53,12 @@ function execute(endpoint,method,reqData,url,token,_res){
 		  console.log("headers: ", res.headers);
 		
 		  res.on('data', function(_data) {
-		    console.log("DATA"+_data);
+		  //  console.log("DATA"+_data);
 		    data += _data;
 		 	});
 		
 		  res.on('end', function(d) {
-		  	console.log("END"+data);
+		  //	console.log("END"+data);
 		  	redirectUser(res);
 		  	});
 		
@@ -66,7 +66,7 @@ function execute(endpoint,method,reqData,url,token,_res){
 		  console.log(e);
 		//  errorCallback(e);
 		})
-	if(method != 'GET') {
+	if(method != 'GET' && method != 'DELETE') {
 		console.log('POSTDATA::'+unescape(reqData));
 		req.write(unescape(reqData));
 	}
@@ -138,12 +138,12 @@ function getObjectById(id,type,url,token,_res) {
 		  console.log("headers: ", res.headers);
 		
 		  res.on('data', function(_data) {
-		    console.log("DATA"+_data);
+		  //  console.log("DATA"+_data);
 		    data += _data;
 		 	});
 		
 		  res.on('end', function(d) {
-		  	console.log("END"+data);
+		  //	console.log("END"+data);
 		  	redirectUser(res);
 		  	});
 		

@@ -65,7 +65,9 @@ function RESTHandler (req, res) {
   //RESTful API
   
   else if(req.url == '/login') {
-  	if(cookies.access_token != null) { 
+  	if(cookies.access_token != null && typeof(cookies.access_token) != "undefined" && cookies.access_token != "undefined") { 
+  		console.log('using cookie information for login');
+  		
   		oauth.setOAuth(cookies.access_token);
   		fs.readFile(oauth.getCallbackFile(), function(err, data){
     	res.writeHead(200, {'Content-Type':'text/html'});  
@@ -120,7 +122,7 @@ function RESTHandler (req, res) {
   		
   		fs.readFile('views'+req.url, function(err, data){
     		if(data) {
-    		console.log(data);
+    	//	console.log(data);
     		res.writeHead(200);  
     		res.write(data);  
     		res.end();
