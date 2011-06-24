@@ -9,6 +9,8 @@ var port = process.env.PORT || 3000;
 var oauth = require('./oauth');
 var rest = require('./rest');
 
+var snip = require('./snip');
+
 // Use environment variables to set CLIENT_ID etc. On Heroku, set these like
 // this:
 // heroku config:add CLIENT_ID=somelongstring CLIENT_SECRET=somedigits etc
@@ -59,11 +61,11 @@ function RESTHandler (req, res) {
   
   
   
-  if(req.url == '/') {
+  if(req.url == '/' ) {
   	console.log('Displaying Index Page');
-	fs.readFile('views/index.html', function(err, data){
+	fs.readFile('views/index.html', 'utf8', function(err, data){
     	res.writeHead(200, {'Content-Type':'text/html'});  
-    	res.write(data);  
+    	res.write(snip.snip(data));  
     	res.end();
   		});
   }
@@ -100,34 +102,33 @@ function RESTHandler (req, res) {
   	console.log(oauth.getLoginUrl());
   	res.writeHead(301, {'Location' : oauth.getLoginUrl(), 'Cache-Control':'no-cache,no-store,must-revalidate'});
   	res.end();
-
  
-  }	else if(req.url.indexOf('/get') >= 0) {
+  }	else if(req.url.indexOf('/get') >= 0 && typeof(oauth.getOAuth()) != "undefined" ) {
    	
    	console.log("Getting :: "+query.id);
   	rest.getObjectById(query.id,query.type,cookies.instance_url,oauth.getOAuth().access_token,res);	
   		
-  } else if(req.url.indexOf('/query') >= 0) {
+  } else if(req.url.indexOf('/query') >= 0 && typeof(oauth.getOAuth()) != "undefined" ) {
    	
   	console.log("Query :: "+query.q);
   	rest.query(query.q,cookies.instance_url,oauth.getOAuth().access_token,res);
   
-  } else if(req.url.indexOf('/update') >= 0) {
+  } else if(req.url.indexOf('/update') >= 0 && typeof(oauth.getOAuth()) != "undefined" ) {
    	
    	console.log("Updating :: "+query.id);
   	rest.update(query.o,query.id,query.type,cookies.instance_url,oauth.getOAuth().access_token,res);
   
-  } else if(req.url.indexOf('/create') >= 0) {
+  } else if(req.url.indexOf('/create') >= 0 && typeof(oauth.getOAuth()) != "undefined" ) {
    	
    	console.log("Creating :: "+query.type);
   	rest.create(query.o,query.type,cookies.instance_url,oauth.getOAuth().access_token,res);
   
-  } else if(req.url.indexOf('/delete') >= 0) {
+  } else if(req.url.indexOf('/delete') >= 0 && typeof(oauth.getOAuth()) != "undefined" ) {
    	
    	console.log("Deleting :: "+query.id);
   	rest.deleteObject(query.id,query.type,cookies.instance_url,oauth.getOAuth().access_token,res);
   
-  } else if(req.url.indexOf('/execute/') >= 0) {
+  } else if(req.url.indexOf('/execute/') >= 0 && typeof(oauth.getOAuth()) != "undefined" ) {
    	
    	restData = req.url.split('/execute/')[1];
    	restData = restData.split('/');
@@ -137,14 +138,20 @@ function RESTHandler (req, res) {
   
   } else {
   		
-  		fs.readFile('views'+req.url, function(err, data){
-    		if(data) {
-    	//	console.log(data);
+  		fs.readFile('views'+req.url, 'utf8', function(err, data){
+  			if(data) {
     		res.writeHead(200);  
-    		res.write(data);  
+    		res.write(snip.snip(data));  
     		res.end();
+    		} else if(data == "undefined" || typeof(data) == "undefined") {
+    		res.writeHead(301, {'Location' : '/404.html', 'Cache-Control':'no-cache,no-store,must-revalidate'});
+  			res.end();
+    		} else { //Something went horribly
+    		res.writeHead(301, {'Location' : '/404.html', 'Cache-Control':'no-cache,no-store,must-revalidate'});
+  			res.end();
     		}
   		});
+  
   }
   		
   }
