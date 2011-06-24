@@ -9,11 +9,38 @@ var data;
 	
 var callBackFunction;
 
-function redirectUser() {
-	response.write(data);  
-    response.end();
+function setOAuth(_oauth) {
+	oauth = _oauth;
 }
 
+function redirectUser() {
+	if(checkValidSession(data)) {
+		
+		response.write(data);  
+    	response.end();
+    	
+    	} else {
+    	
+    	console.log('Checking for refresh token'); //not sure if this is the correct place to hook this in
+  		response.writeHead(301, {'Location' : '/refresh', 'Cache-Control':'no-cache,no-store,must-revalidate'});
+  		response.end();
+    	
+    	}
+}
+
+function checkValidSession(data) {
+	data = JSON.parse(data);
+	console.log('CHECKING FOR ERRORS::'+typeof(data));
+	console.log('CHECKING FOR ERRORS::'+data[0]);
+	
+	if(typeof(data[0]) != "undefined" && typeof(data[0].errorCode) != "undefined") { //
+		if(data[0].errorCode.indexOf('INVALID_SESSION_ID') >= 0) { //we need either a new access token or to refresh the existing
+			return false;
+		}
+	}
+	
+	return true;
+}
 
 
 function execute(endpoint,method,reqData,url,token,_res){
@@ -53,17 +80,18 @@ function execute(endpoint,method,reqData,url,token,_res){
 		  console.log("headers: ", res.headers);
 		
 		  res.on('data', function(_data) {
-		  //  console.log("DATA"+_data);
+		  //  console.log("EXECUTE DATA"+_data);
 		    data += _data;
 		 	});
 		
 		  res.on('end', function(d) {
-		  //	console.log("END"+data);
+		  	console.log("EXECUTE DATA ::: "+data);
 		  	redirectUser(res);
 		  	});
 		
 		}).on('error', function(e) {
-		  console.log(e);
+		    console.log("ERROR"+e)
+		    console.log(e);
 		//  errorCallback(e);
 		})
 	if(method != 'GET' && method != 'DELETE') {
@@ -95,13 +123,13 @@ function query(soql,url,token,_res) {
 		  console.log("headers: ", res.headers);
 		
 		  res.on('data', function(_data) {
-		    console.log("DATA"+_data);
+		    console.log("QUERY DATA"+_data);
+		 
 		    data += _data;
 		 	});
 		
 		  res.on('end', function(d) {
-		  //	console.log("END"+data);
-		  	redirectUser(res);
+		   	redirectUser(res);
 		  	});
 		
 		}).on('error', function(e) {
@@ -290,4 +318,5 @@ module.exports = {
  deleteObject : deleteObject,
  execute: execute,
  response : response,
+ setOAuth : setOAuth
  };

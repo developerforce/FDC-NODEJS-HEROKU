@@ -19,8 +19,11 @@ function getToken() { return requestToken; }
 function getOAuth() { return oauthResponse; }
 
 function setOAuth(oauth) {
-	oauthResponse = {access_token: oauth};
+	if(typeof(oauth) != "undefined") {
+		oauthResponse = {access_token: oauth};
+		}
 }
+
 
 function getLoginUrl() {
 	return oauthURL;
@@ -59,13 +62,13 @@ function getRequestToken(url, res) {
 
 function redirectUser(res) {
 	console.log('RESPONSE:::'+oauthResponse);
-	console.log('RESPONSE:::'+oauthResponse.access_token);
-	console.log('RESPONSE:::'+oauthResponse.refresh_token);
-	console.log('RESPONSE:::'+oauthResponse.instance_url);
+	console.log('RESPONSE/access_token :::'+oauthResponse.access_token);
+	console.log('RESPONSE/refresh_token:::'+oauthResponse.refresh_token);
+	console.log('RESPONSE/instance_url :::'+oauthResponse.instance_url);
 		
 	fs.readFile(callbackFile, function(err, data){
-    	res.setHeader('Set-Cookie', ['refresh_token='+oauthResponse.refresh_token,
-    	    'access_token='+oauthResponse.access_token,
+    	res.setHeader('Set-Cookie', ['refresh_token='+escape(oauthResponse.refresh_token),
+    	    'access_token='+escape(oauthResponse.access_token),
     	    'instance_url='+oauthResponse.instance_url]); 
     	res.write(data);  
     	res.end();
@@ -73,7 +76,7 @@ function redirectUser(res) {
 }	
 
 
-function getAccessToken(token, clientResonse) {
+function getAccessToken(token, clientResponse) {
 	console.log('Getting Access Token for '+token);
 	
 	var post_data = 'code='+token+'&grant_type=authorization_code&client_id='+publicKey+'&redirect_uri='+escape(callbackURI)+'&client_secret='+privateKey;
@@ -101,11 +104,11 @@ function getAccessToken(token, clientResonse) {
 		
 		  res.on('data', function(data) {
 		    oauthResponse = JSON.parse(data);
-		    console.log("DATA::"+data);
+		    console.log("OAUTH DATA::"+data);
 		 	});
 		
 		  res.on('end', function(d) {
-		  	redirectUser(clientResonse);
+		  	redirectUser(clientResponse);
 		  	});
 		
 		}).on('error', function(e) {
@@ -117,10 +120,10 @@ function getAccessToken(token, clientResonse) {
 		
 	}
 	
-function getRefreshTokenToken(token, clientResponse) {
-	console.log('Getting Access Token for '+token);
+function getRefreshToken(token, clientResponse) {
+	console.log('Getting Refresh Token for '+token);
 	
-	var post_data = 'refresh_token='+token+'&grant_type=authorization_code&client_id='+publicKey+'&redirect_uri='+escape(callbackURI)+'&client_secret='+privateKey;
+	var post_data = 'refresh_token='+token+'&grant_type=refresh_token&client_id='+publicKey+'&redirect_uri='+escape(callbackURI)+'&client_secret='+privateKey;
 	console.log(post_data);
 	console.log();
 	console.log(publicKey);
@@ -144,9 +147,10 @@ function getRefreshTokenToken(token, clientResponse) {
 		  console.log("headers: ", res.headers);
 		
 		  res.on('data', function(data) {
+		  	console.log("REFRESH DATA ::: "+data);
 		    newResponse = JSON.parse(data);
-		    oauthResponse.access_token = newResponse.access__token;
-		    console.log("DATA::"+data);
+		    oauthResponse.access_token = newResponse.access_token;
+		    console.log("NEW ACCESS TOKEN::"+oauthResponse.access_token);
 		 	});
 		
 		  res.on('end', function(d) {
@@ -171,6 +175,7 @@ module.exports = {
  setOAuth: setOAuth,
  getLoginUrl: getLoginUrl,
  getAccessToken: getAccessToken,
+ getRefreshToken: getRefreshToken,
  setKeys: setKeys,
  setCallback: setCallback,
  getCallbackFile: getCallbackFile,

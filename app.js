@@ -38,6 +38,8 @@ if(typeof(process.env.PORT) == 'undefined') {  //you are probably not on Heroku,
 server.listen(port);
 console.log('REST Listening on '+port);
 
+
+
 //RESTful API router
 function RESTHandler (req, res) {
   var url_parts = url.parse(req.url, true);
@@ -46,16 +48,19 @@ function RESTHandler (req, res) {
   var cookies = {};
   req.headers.cookie && req.headers.cookie.split(';').forEach(function( cookie ) {
     var parts = cookie.split('=');
-    cookies[ parts[ 0 ].trim() ] = ( parts[ 1 ] || '' ).trim();
+    cookies[ parts[ 0 ].trim() ] = unescape(( parts[ 1 ] || '' ).trim());
   });
   
+  console.log('_____________________________________________________________________________________');
   console.log("Request::::"+req.url);
-  console.log("Cookies::::"+cookies.access_token);
-  console.log("Cookies::::"+cookies.refresh_token);
-  console.log("Cookies::::"+cookies.instance_url);
+  console.log("Cookies Access Token ::::"+cookies.access_token);
+  console.log("Cookies Refresh Token::::"+cookies.refresh_token);
+  console.log("Cookies Instance URL ::::"+cookies.instance_url);
+  
   
   
   if(req.url == '/') {
+  	console.log('Displaying Index Page');
 	fs.readFile('views/index.html', function(err, data){
     	res.writeHead(200, {'Content-Type':'text/html'});  
     	res.write(data);  
@@ -65,27 +70,39 @@ function RESTHandler (req, res) {
   //RESTful API
   
   else if(req.url == '/login') {
+  	
   	if(cookies.access_token != null && typeof(cookies.access_token) != "undefined" && cookies.access_token != "undefined") { 
   		console.log('using cookie information for login');
-  		
   		oauth.setOAuth(cookies.access_token);
   		fs.readFile(oauth.getCallbackFile(), function(err, data){
     	res.writeHead(200, {'Content-Type':'text/html'});  
     	res.write(data);  
     	res.end();
   		});
-  	} else { 
-  	 
-  	    console.log('Logging In with OAuth');
+  	} else {  
+  	    console.log('Logging In with OAuth at:');
   		console.log(oauth.getLoginUrl());
   		res.writeHead(301, {'Location' : oauth.getLoginUrl(), 'Cache-Control':'no-cache,no-store,must-revalidate'});
   		res.end();
   	}
-  }
-  else if(req.url.indexOf('/token') >= 0) {
+  	
+  } else if(req.url.indexOf('/token') >= 0) {
+  	
   	oauth.getRequestToken(req.url,res);
   
-  } else if(req.url.indexOf('/get') >= 0) {
+  } else if(req.url.indexOf('/refresh') >= 0 && typeof(cookies.refresh_token) != "undefined") {
+  	
+  	oauth.getRefreshToken(cookies.refresh_token,res);
+ 
+  } else if(req.url.indexOf('/refresh') >= 0 && typeof(cookies.refresh_token) == "undefined") {
+  	
+  	console.log('No refresh token, logging normally');
+  	console.log(oauth.getLoginUrl());
+  	res.writeHead(301, {'Location' : oauth.getLoginUrl(), 'Cache-Control':'no-cache,no-store,must-revalidate'});
+  	res.end();
+
+ 
+  }	else if(req.url.indexOf('/get') >= 0) {
    	
    	console.log("Getting :: "+query.id);
   	rest.getObjectById(query.id,query.type,cookies.instance_url,oauth.getOAuth().access_token,res);	
@@ -116,7 +133,7 @@ function RESTHandler (req, res) {
    	restData = restData.split('/');
    	console.log("Custom Apex Execute :: "+restData[0]+"."+restData[1]);
    	
-  	rest.execute(restData[0],restData[1],unescape(restData[2]),cookies.instance_url,oauth.getOAuth().access_token,res);
+  	rest.execute(restData[0],restData[1],restData[2],cookies.instance_url,oauth.getOAuth().access_token,res);
   
   } else {
   		

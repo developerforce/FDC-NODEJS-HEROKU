@@ -8,7 +8,20 @@
 <script src="/js/spry/SpryNestedJSONDataSet.js"></script>
 
 <script>
-var caseRecords = new Spry.Data.JSONDataSet(null,null,{useCache:false});
+var accountSOQL = escape("SELECT ID, Name From Account LIMIT 99");
+var accounts = new Spry.Data.JSONDataSet('/query?q='+accountSOQL,{path:"records"});
+
+function init() {
+	accounts.loadData();
+	accounts.addObserver(endLoad)
+}
+
+function endLoad(notificationType, notifier, data)
+{
+	 if(notificationType == 'onPostLoad') {getCases(accounts.getData()[0].Name);}
+}
+
+var caseRecords = new Spry.Data.JSONDataSet(null,{useCache:false});
 var owners = new Spry.Data.NestedJSONDataSet(caseRecords,"Owner");
 
 function submitCase() {
@@ -33,7 +46,7 @@ function submitCase() {
 function deleteOldCases() {
  var company = $('#company_name').val();
  var type = $('#case_type').val();
- url = '/execute/FieldCase/DELETE/?companyName='+company;
+ url = '/execute/FieldCase/DELETE/?companyName='+escape(company);
  
  $.ajaxSetup({
  
@@ -69,7 +82,7 @@ function closeCase(caseId) {
 }
 
 function refresh(response) {
-	getCases('GenePoint');
+	getCases();
 }
 
 
@@ -83,8 +96,9 @@ function showResults(result) {
 
 
 function getCases(company) {
- var d = new Date()
- url = '/execute/FieldCase/GET/?companyName='+company+'&_t='+d.getMilliseconds();
+ if(company == null) {company = $('#company_name').val();}
+ var d = new Date();
+ url = '/execute/FieldCase/GET/?companyName='+escape(company)+'&_t='+d.getMilliseconds();
  caseRecords.setURL(url);
  caseRecords.loadData();
  
@@ -95,7 +109,7 @@ if(window.location.href.indexOf('case-manager') < 0) { //-->
 }
 
 
-$(document).ready(getCases('GenePoint'));
+$(document).ready(init());
 </script>
 </HEAD>
 
@@ -103,7 +117,13 @@ $(document).ready(getCases('GenePoint'));
 
 <div>
 <h1>Submit New Case</h1>
-Company Name:<input id="company_name" value="GenePoint"><BR>
+<div spry:region="accounts">
+Company Name:
+<SELECT id="company_name" onchange="getCases()">
+	<OPTION spry:repeat="accounts">{Name}</OPTION>
+</SELECT>
+
+</div>
 Case Type:
 <SELECT id="case_type">
 	<OPTION SELECTED>Software</OPTION>
