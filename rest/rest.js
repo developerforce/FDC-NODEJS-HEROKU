@@ -359,6 +359,8 @@ function RESTRouter(req, res) {
   		if(cookies.access_token != null && typeof(cookies.access_token) != "undefined" && cookies.access_token != "undefined") { 
   			oauth.setOAuth(cookies.access_token, cookies.instance_url, cookies.refresh_token);
   			console.log('OAuth set :'+oauth.getOAuth().access_token);
+  		} else {
+  			oauth.clearOAuth();
   		}
   		
   		//OAuth Endpoints	
