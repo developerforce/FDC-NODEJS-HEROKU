@@ -1,31 +1,43 @@
 var http = require('https');
 var fs = require('fs');
+var url = require('url');
+var oauth = require('./../oauth');
 
-var access_token;
-var instance_url;
-var response;
 var api = process.env.API || '22.0';
-var data;
-	
-var callBackFunction;
+var oauth;
 
-function setOAuth(_oauth) {
-	oauth = _oauth;
+var endpoints = ['login','token','refresh','get','query','update','create','delete','execute'];
+
+var pendingRequests = new Array();
+
+function setOAuthEnv() {
+	oauth.setKeys(process.env.CLIENT_ID,process.env.CLIENT_SECRET);
+	oauth.setCallback('https://'+process.env.APP_DOMAIN+'/token',process.env.START_PAGE); //TODO - probably should not have view / .html embedded here
 }
 
-function redirectUser() {
-	if(checkValidSession(data)) {
-		
-		response.write(data);  
-    	response.end();
-    	
-    	} else {
-    	
-    	console.log('Checking for refresh token'); //not sure if this is the correct place to hook this in
-  		response.writeHead(301, {'Location' : '/refresh', 'Cache-Control':'no-cache,no-store,must-revalidate'});
-  		response.end();
-    	
-    	}
+function redirectUser(response,data) {
+	response.write(data);  
+    response.end();
+}
+
+function clearOAuth() {
+	oauth.clearOAuth();
+}
+
+function corruptOAuth() {
+	oauth.setOAuth('foo');
+}
+
+function addToPendingAndRefresh(fallbackRequest) {
+	pendingRequests.push(fallbackRequest);	
+	oauth.getRefreshToken(oauth.getOAuth().refresh_token,null,refreshPendingRequests);
+}
+
+function refreshPendingRequests() {
+	for(var i =0; i < pendingRequests.length; i++) {
+		pendingRequests[i].refresh();
+	}
+	pendingRequests = new Array();
 }
 
 function checkValidSession(data) {
@@ -34,7 +46,8 @@ function checkValidSession(data) {
 	console.log('CHECKING FOR ERRORS::'+data[0]);
 	
 	if(typeof(data[0]) != "undefined" && typeof(data[0].errorCode) != "undefined") { //
-		if(data[0].errorCode.indexOf('INVALID_SESSION_ID') >= 0) { //we need either a new access token or to refresh the existing
+		console.log("ERROR FOUND::"+data[0].errorCode);
+		if(data[0].errorCode.indexOf('INVALID') >= 0) { //we need either a new access token or to refresh the existing
 			return false;
 		}
 	}
@@ -42,19 +55,20 @@ function checkValidSession(data) {
 	return true;
 }
 
+function checkEndpoint(req) {
+	for(var i = 0; i < endpoints.length; i++) {
+		if(req.url.indexOf('/'+endpoints[i]) == 0) { return true; }
+	}
+	
+	return false;
+}
 
-function execute(endpoint,method,reqData,url,token,_res){
-	response = _res;
-	data = '';
-	var host = (require('url').parse(url))['host'];
+
+function execute(endpoint,method,reqData,_res,_callback,fallback){
+	var data = '';
+	var host = (require('url').parse(oauth.getOAuth().instance_url))['host'];
 	
 	console.log(':::: EXECUTE REQUEST ::::::');
-	
-	console.log(endpoint);
-	console.log(method);
-	console.log(reqData);
-	console.log(url);
-	console.log(token);
 		
 	if(method == 'GET' || method == 'DELETE') {
 		endpoint += reqData;
@@ -68,7 +82,7 @@ function execute(endpoint,method,reqData,url,token,_res){
 		method: method,
 		headers: {
 			'Host': host,
-			'Authorization': 'OAuth '+token,
+			'Authorization': 'OAuth '+oauth.getOAuth().access_token,
 		//	'Accept':'application/jsonrequest',
 			'Cache-Control':'no-cache,no-store,must-revalidate'
 		}
@@ -85,8 +99,11 @@ function execute(endpoint,method,reqData,url,token,_res){
 		 	});
 		
 		  res.on('end', function(d) {
-		  	console.log("EXECUTE DATA ::: "+data);
-		  	redirectUser(res);
+		  	if(!checkValidSession(data)) {
+		   		addToPendingAndRefresh(fallback);
+		   	}
+		   	else if(_res) {redirectUser(_res,data);}
+		   	else if(_callback) {_callback(data); console.log('Sent Query Callback');}
 		  	});
 		
 		}).on('error', function(e) {
@@ -95,23 +112,23 @@ function execute(endpoint,method,reqData,url,token,_res){
 		//  errorCallback(e);
 		})
 	if(method != 'GET' && method != 'DELETE') {
-		console.log('POSTDATA::'+unescape(reqData));
-		req.write(unescape(reqData));
-	}
+			console.log('POSTDATA::'+unescape(reqData));
+			req.write(unescape(reqData));
+		}
 	req.end();			
 	}
 
-function query(soql,url,token,_res) {
-	response = _res;
-	data = '';
-	var host = (require('url').parse(url))['host'];
+function query(soql,_res,_callback,fallback) {
+//	response = _res;
+	var data = '';
+	var host = (require('url').parse(oauth.getOAuth().instance_url))['host'];
 	var options = {
 		host: host,
 		path: '/services/data/v'+api+'/query?q='+escape(soql),
 		method: 'GET',
 		headers: {
 			'Host': host,
-			'Authorization': 'OAuth '+token,
+			'Authorization': 'OAuth '+oauth.getOAuth().access_token,
 			'Accept':'application/jsonrequest',
 			'Cache-Control':'no-cache,no-store,must-revalidate'
 		}
@@ -123,29 +140,31 @@ function query(soql,url,token,_res) {
 		  console.log("headers: ", res.headers);
 		
 		  res.on('data', function(_data) {
-		    console.log("QUERY DATA"+_data);
-		 
 		    data += _data;
 		 	});
 		
 		  res.on('end', function(d) {
-		   	redirectUser(res);
+		   	if(!checkValidSession(data)) {
+		   		addToPendingAndRefresh(fallback);
+		   	}
+		   	else if(_res) {redirectUser(_res,data);}
+		   	else if(_callback) {_callback(data); console.log('Sent Query Callback');}
 		  	});
 		
 		}).on('error', function(e) {
 		  console.log(e);
 		//  errorCallback(e);
-		})
-	
+		});
+		
 	req.end();
 		
 	}
 
 
-function getObjectById(id,type,url,token,_res) {
-	response = _res;
-	data = '';
-	var host = (require('url').parse(url))['host'];
+function getObjectById(id,type,_res,_callback,fallback) {
+//	response = _res;
+	var data = '';
+	var host = (require('url').parse(oauth.getOAuth().instance_url))['host'];
 
 	var options = {
 		host: host,
@@ -153,7 +172,7 @@ function getObjectById(id,type,url,token,_res) {
 		method: 'GET',
 		headers: {
 			'Host': host,
-			'Authorization': 'OAuth '+token,
+			'Authorization': 'OAuth '+oauth.getOAuth().access_token,
 			'Accept':'application/jsonrequest',
 			'Cache-Control':'no-cache,no-store,must-revalidate',
 			'Content-type':'application/json; charset=UTF-8'
@@ -171,8 +190,11 @@ function getObjectById(id,type,url,token,_res) {
 		 	});
 		
 		  res.on('end', function(d) {
-		  //	console.log("END"+data);
-		  	redirectUser(res);
+		    if(!checkValidSession(data)) {
+		   		addToPendingAndRefresh(fallback);
+		   	}
+		   	else if(_res) {redirectUser(_res,data);}
+		   	else if(_callback) {_callback(data); console.log('Sent Query Callback');}
 		  	});
 		
 		}).on('error', function(e) {
@@ -184,10 +206,10 @@ function getObjectById(id,type,url,token,_res) {
 		
 	}
 	
-function update(object,id,type,url,token,_res) {
-	response = _res;
-	data = '';
-	var host = (require('url').parse(url))['host'];
+function update(object,id,type,_res,_callback,fallback) {
+//	response = _res;
+	var data = '';
+	var host = (require('url').parse(oauth.getOAuth().instance_url))['host'];
 
 	var options = {
 		host: host,
@@ -195,7 +217,7 @@ function update(object,id,type,url,token,_res) {
 		method: 'PATCH',
 		headers: {
 			'Host': host,
-			'Authorization': 'OAuth '+token,
+			'Authorization': 'OAuth '+oauth.getOAuth().access_token,
 			'Accept':'application/jsonrequest',
 			'Cache-Control':'no-cache,no-store,must-revalidate',
 			'Content-type':'application/json; charset=UTF-8'
@@ -213,8 +235,11 @@ function update(object,id,type,url,token,_res) {
 		 	});
 		
 		  res.on('end', function(d) {
-		  	console.log("END"+data);
-		  	redirectUser(res);
+		  	if(!checkValidSession(data)) {
+		   		addToPendingAndRefresh(fallback);
+		   	}
+		   	else if(_res) {redirectUser(_res,data);}
+		   	else if(_callback) {_callback(data); console.log('Sent Query Callback');}
 		  	});
 		
 		}).on('error', function(e) {
@@ -226,17 +251,17 @@ function update(object,id,type,url,token,_res) {
 		
 	}
 
-function create(object,type,url,token,_res) {
-	response = _res;
+function create(object,type,_res,_callback,fallback) {
+//	response = _res;
 	data = '';
-	var host = (require('url').parse(url))['host'];
+	var host = (require('url').parse(oauth.getOAuth().instance_url))['host'];
 	var options = {
 		host: host,
 		path: '/services/data/v'+api+'/sobjects/'+type,
 		method: 'POST',
 		headers: {
 			'Host': host,
-			'Authorization': 'OAuth '+token,
+			'Authorization': 'OAuth '+oauth.getOAuth().access_token,
 			'Accept':'application/jsonrequest',
 			'Cache-Control':'no-cache,no-store,must-revalidate',
 			'Content-type':'application/json; charset=UTF-8'
@@ -254,8 +279,11 @@ function create(object,type,url,token,_res) {
 		 	});
 		
 		  res.on('end', function(d) {
-		  	console.log("END"+data);
-		  	redirectUser(res);
+		  	if(!checkValidSession(data)) {
+		   		addToPendingAndRefresh(fallback);
+		   	}
+		   	else if(_res) {redirectUser(_res,data);}
+		   	else if(_callback) {_callback(data); console.log('Sent Query Callback');}
 		  	});
 		
 		}).on('error', function(e) {
@@ -267,17 +295,17 @@ function create(object,type,url,token,_res) {
 		
 	}
 	
-function deleteObject(id,type,url,token,_res) {
-	response = _res;
+function deleteObject(id,type,_res,_callback,fallback) {
+//	response = _res;
 	data = '';
-	var host = (require('url').parse(url))['host'];
+	var host = (require('url').parse(oauth.getOAuth().instance_url))['host'];
 	var options = {
 		host: host,
 		path: '/services/data/v'+api+'/sobjects/'+type+'/'+id,
 		method: 'DELETE',
 		headers: {
 			'Host': host,
-			'Authorization': 'OAuth '+token,
+			'Authorization': 'OAuth '+oauth.getOAuth().access_token,
 			'Accept':'application/jsonrequest',
 			'Cache-Control':'no-cache,no-store,must-revalidate',
 			'Content-type':'application/json; charset=UTF-8'
@@ -295,8 +323,11 @@ function deleteObject(id,type,url,token,_res) {
 		 	});
 		
 		  res.on('end', function(d) {
-		  	console.log("END"+data);
-		  	redirectUser(res);
+		  	if(!checkValidSession(data)) {
+		   		addToPendingAndRefresh(fallback);
+		   	}
+		   	else if(_res) {redirectUser(_res,data);}
+		   	else if(_callback) {_callback(data); console.log('Sent Query Callback');}
 		  	});
 		
 		}).on('error', function(e) {
@@ -307,16 +338,142 @@ function deleteObject(id,type,url,token,_res) {
 		
 	}
 	
+	
+function RESTRouter(req, res) {
+	
+	console.log('_____________________________________________________________________________________');
+  	
+	if(checkEndpoint(req)) {
+		var cookies = {};
+  			req.headers.cookie && req.headers.cookie.split(';').forEach(function( cookie ) {
+    		var parts = cookie.split('=');
+    		cookies[ parts[ 0 ].trim() ] = unescape(( parts[ 1 ] || '' ).trim());
+  		});
+  		
+  		console.log("REST Request::::"+req.url);
+  		console.log("Cookies Access Token ::::"+cookies.access_token);
+  		console.log("Cookies Refresh Token::::"+cookies.refresh_token);
+  		console.log("Cookies Instance URL ::::"+cookies.instance_url);
+  		
+  		/*Can we maybe not reset this constantly? */
+  		if(cookies.access_token != null && typeof(cookies.access_token) != "undefined" && cookies.access_token != "undefined") { 
+  			oauth.setOAuth(cookies.access_token, cookies.instance_url, cookies.refresh_token);
+  			console.log('OAuth set :'+oauth.getOAuth().access_token);
+  		}
+  		
+  		//OAuth Endpoints	
+	  if(req.url == '/login') {
+	  	console.log('OAuth defined :'+typeof(oauth.getOAuth()));
+	  	
+	  	if(typeof(oauth.getOAuth()) != "undefined") { 
+	  		console.log('Logged in.  Redirecting.');
+	  		console.log(oauth.getCallbackFile());
+	  		res.writeHead(301, {'Location' : oauth.getCallbackFile(), 'Cache-Control':'no-cache,no-store,must-revalidate'});
+	  		res.end();
+	  	} else {  
+	  	    console.log('Logging In with OAuth at:');
+	  		console.log(oauth.getLoginUrl());
+	  		res.writeHead(301, {'Location' : oauth.getLoginUrl(), 'Cache-Control':'no-cache,no-store,must-revalidate'});
+	  		res.end();
+	  	}
+	  	
+	  } else if(req.url.indexOf('/token') >= 0) {
+	  	
+	  	oauth.getRequestToken(req.url,res);
+	  
+	  } else if(req.url.indexOf('/refresh') >= 0 && typeof(cookies.refresh_token) != "undefined") {
+	  	
+	  	oauth.getRefreshToken(cookies.refresh_token,res);
+	 
+	  } else if(req.url.indexOf('/refresh') >= 0 && typeof(cookies.refresh_token) == "undefined") {
+	  	
+	  	console.log('No refresh token, logging normally');
+	  	console.log(oauth.getLoginUrl());
+	  	res.writeHead(301, {'Location' : oauth.getLoginUrl(), 'Cache-Control':'no-cache,no-store,must-revalidate'});
+	  	res.end();
+	 
+	  }	else if(typeof(oauth.getOAuth()) != undefined ) {
+  	
+  		var r = new RESTRequest(req,res);
+		
+	  }
+	  
+	  	return true;
+	  
+	  } else {
+		
+		return false;
+	}
+}	
+
+function RESTRequest(_req, _response, _callback) {
+  
+  var callback;
+  var res;
+  var req;
+
+  if(_callback) { callback = _callback; }
+  if(_response) { res = _response; }
+  if(_req) { req = _req; }
+
+  var url_parts = url.parse(req.url, true);
+  var req_query = url_parts.query;
+  
+  this.refresh = function() {new RESTRequest(req,res,callback);}
+  	
+  console.log('REST Request for :'+req.url);
+  console.log('REST Request res :'+typeof(res));
+  console.log('REST Request call:'+typeof(callback));
+  console.log('REST Request w/  :'+typeof(oauth.getOAuth()));
+  
+  //RESTful API
+  if(req.url.indexOf('/get') >= 0 && typeof(oauth.getOAuth()) != "undefined" ) {
+   	
+   	console.log("Getting :: "+req_query.id);
+  	getObjectById(req_query.id,req_query.type,res,callback,this);	
+  		
+  } else if(req.url.indexOf('/query') >= 0 && typeof(oauth.getOAuth()) != "undefined" ) {
+   	
+  	console.log("Query :: "+req_query.q);
+  	query(req_query.q,res,callback,this);
+  
+  } else if(req.url.indexOf('/update') >= 0 && typeof(oauth.getOAuth()) != "undefined" ) {
+   	
+   	console.log("Updating :: "+req_query.id);
+  	update(req_query.o,req_query.id,req_query.type,res,callback,this);
+  
+  } else if(req.url.indexOf('/create') >= 0 && typeof(oauth.getOAuth()) != "undefined" ) {
+   	
+   	console.log("Creating :: "+req_query.type);
+  	create(req_query.o,req_query.type,res,this);
+  
+  } else if(req.url.indexOf('/delete') >= 0 && typeof(oauth.getOAuth()) != "undefined" ) {
+   	
+   	console.log("Deleting :: "+req_query.id);
+  	deleteObject(req_query.id,req_query.type,res,callback,this);
+  
+  } else if(req.url.indexOf('/execute/') >= 0 && typeof(oauth.getOAuth()) != "undefined" ) {
+   	
+   	restData = req.url.split('/execute/')[1];
+   	restData = restData.split('/');
+   	console.log("Custom Apex Execute :: "+restData[0]+"."+restData[1]);
+   	
+  	execute(restData[0],restData[1],restData[2],res,callback,this);
+  
+  }   
+}	
+	
 
 module.exports = {
- access_token : access_token,
- instance_url : instance_url,
  getObjectById : getObjectById,
  query : query,
  update : update,
  create : create,
  deleteObject : deleteObject,
  execute: execute,
- response : response,
- setOAuth : setOAuth
+ setOAuthEnv : setOAuthEnv,
+ RESTRouter : RESTRouter,
+ RESTRequest : RESTRequest,
+ clearOAuth : clearOAuth,
+ corruptOAuth : corruptOAuth
  };

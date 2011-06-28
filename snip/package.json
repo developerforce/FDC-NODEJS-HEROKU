@@ -1,2 +1,5 @@
-{ "name" : "spip",
-  "main" : "snip.js" }
+{ "name" : "snip",
+  "main" : "app.js",
+  "version" : "0.5.0",
+  "author"  : "Josh Birk"
+   }

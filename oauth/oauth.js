@@ -13,17 +13,28 @@ var hostname = 'login.salesforce.com'; //typically login.salesforce.com
 
 
 var requestToken;
-var oauthResponse;
+var oauthResponse = {"access_token":null,"instance_url":null,"refresh_token":null}
 
 function getToken() { return requestToken; }
 function getOAuth() { return oauthResponse; }
 
-function setOAuth(oauth) {
-	if(typeof(oauth) != "undefined") {
-		oauthResponse = {access_token: oauth};
-		}
+function setOAuth(access, instance, refresh) {
+	if(access) {
+		oauthResponse.access_token = access;
+	} 
+	
+	if(instance) {
+		oauthResponse.instance_url = instance;
+	}
+	
+	if(refresh) {
+		oauthResponse.refresh_token = refresh;
+	}
 }
 
+function clearOAuth() {
+	oauthResponse = null;
+}
 
 function getLoginUrl() {
 	return oauthURL;
@@ -65,13 +76,15 @@ function redirectUser(res) {
 	console.log('RESPONSE/access_token :::'+oauthResponse.access_token);
 	console.log('RESPONSE/refresh_token:::'+oauthResponse.refresh_token);
 	console.log('RESPONSE/instance_url :::'+oauthResponse.instance_url);
+	
+	console.log("REDIRECTING TO::"+getCallbackFile());
 		
 	fs.readFile(callbackFile, function(err, data){
     	res.setHeader('Set-Cookie', ['refresh_token='+escape(oauthResponse.refresh_token),
     	    'access_token='+escape(oauthResponse.access_token),
     	    'instance_url='+oauthResponse.instance_url]); 
-    	res.write(data);  
-    	res.end();
+    	res.writeHead(301, {'Location' : getCallbackFile(), 'Cache-Control':'no-cache,no-store,must-revalidate'});
+	  	res.end();
   		});
 }	
 
@@ -120,7 +133,7 @@ function getAccessToken(token, clientResponse) {
 		
 	}
 	
-function getRefreshToken(token, clientResponse) {
+function getRefreshToken(token, _res, callback) {
 	console.log('Getting Refresh Token for '+token);
 	
 	var post_data = 'refresh_token='+token+'&grant_type=refresh_token&client_id='+publicKey+'&redirect_uri='+escape(callbackURI)+'&client_secret='+privateKey;
@@ -154,7 +167,8 @@ function getRefreshToken(token, clientResponse) {
 		 	});
 		
 		  res.on('end', function(d) {
-		  	redirectUser(clientResponse);
+		  	if(callback) {callback();}
+		  	if(_res) {redirectUser(_res);}
 		  	});
 		
 		}).on('error', function(e) {
@@ -173,6 +187,7 @@ module.exports = {
  getToken: getToken,
  getOAuth: getOAuth,
  setOAuth: setOAuth,
+ clearOAuth: clearOAuth,
  getLoginUrl: getLoginUrl,
  getAccessToken: getAccessToken,
  getRefreshToken: getRefreshToken,
