@@ -46,7 +46,7 @@ function checkValidSession(data) {
 	console.log('CHECKING FOR ERRORS::'+data[0]);
 	
 	if(typeof(data[0]) != "undefined" && typeof(data[0].errorCode) != "undefined") { //
-		console.log("ERROR FOUND::"+data[0].errorCode);
+		console.log("ERROR FOUND::"+data[0].errorCode); //Oddly, this seems to be either INVALID SESSION or INVALID CROSS REFERENCE
 		if(data[0].errorCode.indexOf('INVALID') >= 0) { //we need either a new access token or to refresh the existing
 			return false;
 		}
