@@ -366,6 +366,7 @@ function RESTRouter(req, res) {
   		//OAuth Endpoints	
 	  if(req.url == '/login') {
 	  	console.log('OAuth defined :'+typeof(oauth.getOAuth()));
+	  	console.log('OAuth defined :'+oauth.getOAuth());
 	  	
 	  	if(typeof(oauth.getOAuth()) != "undefined" || oauth.getOauth() == null) { 
 	  		console.log('Logged in.  Redirecting.');
