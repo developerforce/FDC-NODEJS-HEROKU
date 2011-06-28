@@ -368,7 +368,7 @@ function RESTRouter(req, res) {
 	  	console.log('OAuth defined :'+typeof(oauth.getOAuth()));
 	  	console.log('OAuth defined :'+oauth.getOAuth());
 	  	
-	  	if(typeof(oauth.getOAuth()) != "undefined" && oauth.getOAuth() == null) { 
+	  	if(typeof(oauth.getOAuth()) != "undefined" && oauth.getOAuth() != null) { 
 	  		console.log('Logged in.  Redirecting.');
 	  		console.log(oauth.getCallbackFile());
 	  		res.writeHead(301, {'Location' : oauth.getCallbackFile(), 'Cache-Control':'no-cache,no-store,must-revalidate'});
