@@ -1,7 +1,7 @@
 var fs = require('fs');
 var url = require('url');
 var rest = require('./rest');
-var snip = require('snip');
+var snip = require('snip'); //not really needed, just used for this demo.  npm install snip to grab this one.
 
 var server;
 
