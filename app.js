@@ -66,28 +66,49 @@ function HTTPHandler(req,res) {
     	res.end();
   		});
   		
-  } else if(req.url == '/clear' ) {
-  	console.log('Displaying Index Page w/ clear');
-	
+  } else if(req.url == '/testquery' ) {
+
+  	console.log('Redirecting Query Endpoint');
+	rest.corruptOAuth();
 	fs.readFile('views/index.html', 'utf8', function(err, data){
+   // 	res.setHeader('Set-Cookie', ['access_token=undefined']); 
+    	res.writeHead(301, {'Location' : '/query?q=SELECT+ID+FROM+ACCOUNT', 'Cache-Control':'no-cache,no-store,must-revalidate'});
+  		res.end();
+  		});
+
+  } else if(req.url == '/clear' ) {		
+		
+		console.log('Displaying Index Page w/ clear');
+		rest.clearOAuth();
+		fs.readFile('views/index.html', 'utf8', function(err, data){
+	    	res.writeHead(301, {'Location' : '/', 'Cache-Control':'no-cache,no-store,must-revalidate'});
+	  		res.end();
+	  		});
+		
+  } else if(req.url == '/corrupt' ) {
+  
+	console.log('Displaying Index Page w/ corrupt');
+	rest.corruptOAuth();
+	fs.readFile('views/index.html', 'utf8', function(err, data){
+    	res.setHeader('Set-Cookie', ['access_token=undefined']); 
+    	res.writeHead(301, {'Location' : '/', 'Cache-Control':'no-cache,no-store,must-revalidate'});
+  		res.end();
+  		});
+
+  }  else if (req.url == '/attachment' ) {
+  	
+  	var data64 = fs.readFileSync('test.png');
+  	rest.execute('FieldCase','PUT',data64,null,console.log);
+  	
+  	fs.readFile('views/index.html', 'utf8', function(err, data){
     	res.writeHead(200, {'Content-Type':'text/html'});  
     	res.write(snip.snip(data));  
     	res.end();
   		});
-  		
-  } else if(req.url == '/corrupt' ) {
-  	console.log('Displaying Index Page w/ corrupt');
-	rest.corruptOAuth();
-	fs.readFile('views/index.html', 'utf8', function(err, data){
-    	res.setHeader('Set-Cookie', ['access_token=undefined']); 
-    	res.writeHead(301, {'Location' : '/query?q=SELECT+ID+FROM+ACCOUNT', 'Cache-Control':'no-cache,no-store,must-revalidate'});
-  		res.end();
-  		});
-  	
-  		
+  
   } else if(rest.RESTRouter(req,res)) {
   
-  	console.log('REST Request Routed');
+  		console.log('REST Request Routed');
   
   } else {
   		

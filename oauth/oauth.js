@@ -33,7 +33,7 @@ function setOAuth(access, instance, refresh) {
 }
 
 function clearOAuth() {
-	oauthResponse = null;
+	oauthResponse = {"access_token":null,"instance_url":null,"refresh_token":null};
 }
 
 function getLoginUrl() {

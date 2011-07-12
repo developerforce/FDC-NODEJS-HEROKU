@@ -16,8 +16,10 @@ function setOAuthEnv() {
 }
 
 function redirectUser(response,data) {
+	response.setHeader('Set-Cookie', ['access_token='+oauth.getOAuth().access_token]); 
 	response.write(data);  
     response.end();
+	pendingRequests = new Array();
 }
 
 function clearOAuth() {
@@ -25,7 +27,7 @@ function clearOAuth() {
 }
 
 function corruptOAuth() {
-	oauth.setOAuth('foo');
+	oauth.setOAuth('undefined');
 }
 
 function addToPendingAndRefresh(fallbackRequest) {
@@ -37,7 +39,7 @@ function refreshPendingRequests() {
 	for(var i =0; i < pendingRequests.length; i++) {
 		pendingRequests[i].refresh();
 	}
-	pendingRequests = new Array();
+//	pendingRequests = new Array();
 }
 
 function checkValidSession(data) {
@@ -47,6 +49,8 @@ function checkValidSession(data) {
 	
 	if(typeof(data[0]) != "undefined" && typeof(data[0].errorCode) != "undefined") { //
 		console.log("ERROR FOUND::"+data[0].errorCode); //Oddly, this seems to be either INVALID SESSION or INVALID CROSS REFERENCE
+		console.log("ERROR FOUND::"+data[0].message); //Oddly, this seems to be either INVALID SESSION or INVALID CROSS REFERENCE
+	//	if(data[0].errorCode.indexOf('INVALID_SESSION') >= 0) { //we need either a new access token or to refresh the existing
 		if(data[0].errorCode.indexOf('INVALID') >= 0) { //we need either a new access token or to refresh the existing
 			return false;
 		}
@@ -112,8 +116,8 @@ function execute(endpoint,method,reqData,_res,_callback,fallback){
 		//  errorCallback(e);
 		})
 	if(method != 'GET' && method != 'DELETE') {
-			console.log('POSTDATA::'+unescape(reqData));
-			req.write(unescape(reqData));
+			if(typeof(reqData) == "string") { req.write(unescape(reqData)); }
+			else { req.write(reqData); }
 		}
 	req.end();			
 	}
@@ -355,20 +359,27 @@ function RESTRouter(req, res) {
   		console.log("Cookies Refresh Token::::"+cookies.refresh_token);
   		console.log("Cookies Instance URL ::::"+cookies.instance_url);
   		
-  		/*Can we maybe not reset this constantly? */
-  		if(cookies.access_token != null && typeof(cookies.access_token) != "undefined" && cookies.access_token != "undefined") { 
-  			oauth.setOAuth(cookies.access_token, cookies.instance_url, cookies.refresh_token);
+  		/* Can we maybe not reset this constantly - or does this enforce sanity? */
+		//also, maybe an isValid function would be better here
+  		if( (cookies.access_token != null && typeof(cookies.access_token) != "undefined" && cookies.access_token != "undefined")
+			&& (cookies.instance_url != null && cookies.refresh_token != null) && 
+				(typeof(cookies.instance_url) != "undefined" && cookies.refresh_token != "undefined")) {
+			
+				oauth.setOAuth(cookies.access_token, cookies.instance_url, cookies.refresh_token);
+
   			console.log('OAuth set :'+oauth.getOAuth().access_token);
+
   		} else {
-  			oauth.clearOAuth();
+  			
+				oauth.clearOAuth();
   		}
   		
-  		//OAuth Endpoints	
+  	  //OAuth Endpoints	
 	  if(req.url == '/login') {
 	  	console.log('OAuth defined :'+typeof(oauth.getOAuth()));
 	  	console.log('OAuth defined :'+oauth.getOAuth());
 	  	
-	  	if(typeof(oauth.getOAuth()) != "undefined" && oauth.getOAuth() != null) { 
+	  	if(typeof(oauth.getOAuth()) != "undefined" && oauth.getOAuth() != null && oauth.getOAuth().access_token != null && oauth.getOAuth().access_token != "undefined") { 
 	  		console.log('Logged in.  Redirecting.');
 	  		console.log(oauth.getCallbackFile());
 	  		res.writeHead(301, {'Location' : oauth.getCallbackFile(), 'Cache-Control':'no-cache,no-store,must-revalidate'});
