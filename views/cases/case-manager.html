@@ -98,7 +98,7 @@ function showResults(result) {
 function getCases(company) {
  if(company == null) {company = $('#company_name').val();}
  var d = new Date();
- url = '/execute/FieldCase/GET/?companyName='+escape(company)+'&_t='+d.getMilliseconds();
+ url = '/execute/FieldCase/GET/?companyName='+escape(company);
  caseRecords.setURL(url);
  caseRecords.loadData();
  
